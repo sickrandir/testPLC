@@ -10,7 +10,7 @@ from time import sleep
 
 MMTYPES = ['0014', '6020', '6038', '6048', 'A000', 'A004', 'A008', 'A00C', 'A01C', 'A020', 'A02C', 'A030', 'A034', 'A038', 'A040', 'A048', 'A04C', 'A050', 'A054', 'A058', 'A068 ', 'A06C', 'A070', '0000', '0004', '0007', '0019', '001D']
 libc_path = '/lib/libc.so.6'
-libfaifa_path = '/home/kinto/trunk/libfaifa.so.0'
+libfaifa_path = '/usr/local/lib/libfaifa.so.0'
 
 def main():
     
