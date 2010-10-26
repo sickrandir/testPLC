@@ -86,7 +86,7 @@ def main():
     def faifa_startup():
 	global faifa 
 	faifa = ctypes.c_void_p(libfaifa.faifa_init())
-	state = libfaifa.faifa_open(faifa, 'eth2') 
+	state = libfaifa.faifa_open(faifa, 'eth0') 
 	#create a daemon thread for the receive loop, so when the foreground sending of messages is over, the program doesn't wait for the receive loop thread to terminate.
 	receive_loop_t = Thread(group=None, target=receive_loop, name='receive_loop', args=(faifa,), kwargs={})
 	receive_loop_t.daemon = True
