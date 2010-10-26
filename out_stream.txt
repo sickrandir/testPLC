@@ -1,0 +1,36 @@
+Number of carriers with NO modulation: 239 (20.000000 %)
+Number of carriers with BPSK modulation: 0 (0.000000 %)
+Number of carriers with QPSK modulation: 0 (0.000000 %)
+Number of carriers with QAM-8 modulation: 0 (0.000000 %)
+Number of carriers with QAM-16 modulation: 0 (0.000000 %)
+Number of carriers with QAM-64 modulation: 5 (0.000000 %)
+Number of carriers with QAM-256 modulation: 119 (10.000000 %)
+Number of carriers with QAM-1024 modulation: 793 (68.000000 %)
+Number of carriers with Unknown/unused modulation: 0 (0.000000 %)
+
+91 Mbit/s
+
+8912 bit totali trasmessi nel tempo di simbolo
+191655914.0 bit/s
+191.655914 Mbit/s
+
+
+
+
+Number of carriers with NO modulation: 239 (20.000000 %)
+Number of carriers with BPSK modulation: 0 (0.000000 %)
+Number of carriers with QPSK modulation: 0 (0.000000 %)
+Number of carriers with QAM-8 modulation: 0 (0.000000 %)
+Number of carriers with QAM-16 modulation: 10 (0.000000 %)
+Number of carriers with QAM-64 modulation: 48 (4.000000 %)
+Number of carriers with QAM-256 modulation: 179 (15.000000 %)
+Number of carriers with QAM-1024 modulation: 680 (58.000000 %)
+Number of carriers with Unknown/unused modulation: 0 (0.000000 %)
+Number of modulation: 1156
+
+
+68 Mbit/s
+
+8560 bit totali trasmessi nel tempo di simbolo
+184086022.0 bit/s
+184.086022 Mbit/s

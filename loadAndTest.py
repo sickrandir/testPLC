@@ -39,7 +39,7 @@ stdin, stdout, stderr = ssh.exec_command('pjsua-i686-pc-linux-gnu --null-audio -
 #pvideo = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 #dumpCommand='sudo dumpcap -i eth0 -a duration:60 -f "ether proto 0x88e1"'
-dumpCommand='sudo dumpcap -i eth0 -a duration:60 -f "ether proto 0x88e1"'
+dumpCommand='sudo dumpcap -i eth0 -a duration:60'
 args = shlex.split(dumpCommand)
 pdump = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 line = pdump.stdout.readline()
