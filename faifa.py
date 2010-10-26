@@ -10,7 +10,8 @@ from time import sleep
 
 MMTYPES = ['0014', '6020', '6038', '6048', 'A000', 'A004', 'A008', 'A00C', 'A01C', 'A020', 'A02C', 'A030', 'A034', 'A038', 'A040', 'A048', 'A04C', 'A050', 'A054', 'A058', 'A068 ', 'A06C', 'A070', '0000', '0004', '0007', '0019', '001D']
 libc_path = '/lib/libc.so.6'
-libfaifa_path = '/usr/local/lib/libfaifa.so.0'
+#libfaifa_path = '/usr/local/lib/libfaifa.so.0'
+libfaifa_path = '/home/kinto/trunk/libfaifa.so.0'
 
 def main():
     
@@ -85,7 +86,7 @@ def main():
     def faifa_startup():
 	global faifa 
 	faifa = ctypes.c_void_p(libfaifa.faifa_init())
-	state = libfaifa.faifa_open(faifa, 'eth0') 
+	state = libfaifa.faifa_open(faifa, 'eth2') 
 	#create a daemon thread for the receive loop, so when the foreground sending of messages is over, the program doesn't wait for the receive loop thread to terminate.
 	receive_loop_t = Thread(group=None, target=receive_loop, name='receive_loop', args=(faifa,), kwargs={})
 	receive_loop_t.daemon = True
