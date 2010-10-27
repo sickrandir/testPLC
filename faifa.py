@@ -62,6 +62,7 @@ def main():
 	in_stream_p.value = in_stream_file
 	err_stream_p.value = stderr_p.value
     
+    
     #Interactive Mode: load faifa library using STDIN, STDOU and STDERR for communication
     def interactive_setup():
 	global libfaifa
@@ -92,6 +93,35 @@ def main():
 	receive_loop_t.daemon = True
 	receive_loop_t.start()
     
+    def calcRateBound(lines):
+	bitTX = 0
+	bitPerSymbol = {
+		"NO": 0,
+		"Unknown/unused": 0,
+		"BPSK": 1,
+		"QPSK": 2,
+		"QAM-8": 3,
+		"QAM-16": 4,
+		"QAM-64": 6,
+		"QAM-256": 8,
+		"QAM-1024": 10,
+		}
+	for line in lines:
+	    words = line.split()
+	    bits = bitPerSymbol[words[4]]
+	    print words[4] + " -> " + str(bits)
+	    bitTX = bitTX + bits*int(words[6])
+	
+	#print str(bitTX) + " bit totali trasmessi nel tempo di simbolo"
+	bitPerSecond = round(bitTX/0.0000465)
+	#print str(bitPerSecond) + " bit/s"
+	#print str(bitPerSecond/1000000) + " Mbit/s"
+    
+    
+      
+    
+    
+    
     #Sends frame in batch mode
     def batch():
 	for mess in frames_to_send:
@@ -99,6 +129,8 @@ def main():
 	    mmtype = int(s,16)
 	    libfaifa.do_frame(faifa, mmtype, None, None, None)
 	    sleep(3)
+	    
+		
 	
     #Sends frame in interactive mode    
     def interactive():
