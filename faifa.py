@@ -128,6 +128,7 @@ def main():
     
     
     #Sends frame in batch mode
+    
     def batch():
         debug = open("/home/kinto/source/faifapy/debug.txt","w")
         for f in frames_to_send:
@@ -144,6 +145,7 @@ def main():
 
 
     #Sends frame in interactive mode    
+    
     def interactive():
         while(True):
             s = raw_input("Choose the MMTYPE to send:")
@@ -156,6 +158,7 @@ def main():
     
     
     #Only root can properly use faifa library
+    
     if not os.geteuid()==0:
         sys.exit("\nOnly root can run this script\n")
    
@@ -170,7 +173,7 @@ def main():
         batch()
     
     close_res = libc.fclose(out_stream_file)
-    print "close: " + str(close_res)    
+    #print "close: " + str(close_res)    
     libfaifa.faifa_close(faifa)
     libfaifa.faifa_free(faifa)
     
