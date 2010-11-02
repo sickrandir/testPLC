@@ -1,3 +1,14 @@
 Fase adattamento: iperf -c 192.168.1.218 -t3 -u -b90M - necessario perché la modulazione adattativa raggiunga il massimo possibile per l'SNR
 
 
+
+
+
+
+
+
+Multi Terminal
+
+- capire cosa si osserva a livello di modulazione e statistiche sul link verso una stazione quando viene caricato il canale verso un'altra 
+
+

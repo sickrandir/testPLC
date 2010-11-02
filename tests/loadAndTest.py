@@ -24,20 +24,6 @@ stdin, stdout, stderr = ssh.exec_command('iperf -s -u')
 stdin, stdout, stderr = ssh.exec_command('pjsua-i686-pc-linux-gnu --null-audio --add-codec=pcma --play-file=/home/kinto/call001.wav --auto-play --auto-answer=200 ')
 
 
-
-#xwininfo = 'xwininfo -name "Windows XP [Running] - Sun VirtualBox"'
-#args = shlex.split(xwininfo)
-#px = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-#px.wait()
-#for line in px.stdout:
-  #if "Window id:" in line:
-    #winid = line[21:30]
-
-
-#recordCommand = 'sudo -u kinto recordmydesktop --no-sound -windowid '+winid+' -o '+dumpDir+videoOutput
-#args = shlex.split(recordCommand)
-#pvideo = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
 #dumpCommand='sudo dumpcap -i eth0 -a duration:60 -f "ether proto 0x88e1"'
 dumpCommand='sudo dumpcap -i eth0 -a duration:60'
 args = shlex.split(dumpCommand)
@@ -63,7 +49,6 @@ ssh.close()
 
 
 pdump.wait()
-pvideo.terminate()
 shutil.copy(tmpCap, dumpDir+dumpFile)
 
 subprocess.call(shlex.split('chown kinto:kinto '+dumpDir+dumpFile))
