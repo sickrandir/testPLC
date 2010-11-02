@@ -7,7 +7,7 @@ macAddr3 = '00:24:B2:57:20:32'
 bandH = '90M'
 bandM = '40M'
 bandL = '5M'
-duration = 20
+duration = 10
 faifapy = '/home/kinto/source/faifapy/faifa.py'
 iperfCommand='iperf -c %s -t %s -u -b %s'
 
