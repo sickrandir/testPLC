@@ -23,10 +23,21 @@ static void error(char *message)
 
 void *receive_loop(faifa_t *faifa)
 {
-	faifa_loop(faifa, (void *)do_receive_frame, faifa);
+	faifa_loop(faifa, (void *)get_frame, faifa);
 
 	return faifa;
 }
+
+void get_frame()
+{
+  
+  
+    
+
+}
+
+
+
 
 int main(int argc, char **argv)
 {
