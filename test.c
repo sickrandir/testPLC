@@ -4,10 +4,14 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <pthread.h>
-
+#include <netinet/in.h>
 
 #include "faifa.h"
 #include "frame.h"
+#include <net/ethernet.h>
+#include "homeplug.h"
+#include "homeplug_av.h"
+
 
 extern FILE *err_stream;
 extern FILE *out_stream;
@@ -40,6 +44,20 @@ void print_blob( u_char *buf, int len)
 		dump_hex((u_int8_t *)buf + i, (d > 0) ? HEX_BLOB_BYTES_PER_ROW : m, " ");
 	}
 	faifa_printf(out_stream, "\n"); 
+
+	return len;
+}
+
+int dump_hex(void *buf, int len, char *sep)
+{
+	int avail = len;
+	u_int8_t *p = buf;
+
+	while (avail > 0) {
+		faifa_printf(out_stream, "%02hX%s", *p, (avail > 1) ? sep : "");
+		p++;
+		avail--;
+	}
 
 	return len;
 }
@@ -90,15 +108,34 @@ int main(int argc, char **argv)
     faifa_printf(stdout, "Spedito\n");
     
     const u_char *buf;
-    int l;
-    l = faifa_recv(faifa, &buf, l);
-    faifa_printf(stdout, "Binary data: %d", l);
+    int l = 90;
+    u_int16_t *eth_type;
+    do {
+		
+		l = faifa_recv(faifa, &buf, l);
+		struct ether_header *eth_header = (struct ether_header *)buf;
+		eth_type = &(eth_header->ether_type);
+		u_int8_t *frame_ptr = (u_int8_t *)buf, *payload_ptr;
+		int frame_len = l, payload_len;
+
+		payload_ptr = frame_ptr + sizeof(*eth_header);
+		payload_len = frame_len - sizeof(*eth_header);
+		
+		
+		/* Check ethertype */
+		if (!(*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) && !(*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV)))
+			return;
+	}
+	while (!(*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) && !(*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV)));
+    
+    faifa_printf(stdout, "Binary data: %d\n", l);
+    
+
     
     
     
-    faifa_close(faifa);
-	faifa_printf(stdout, "dopo faifa_close\n");
-    faifa_free(faifa);
+    //faifa_close(faifa);
+	//faifa_free(faifa);
 
 	return 0;
     
