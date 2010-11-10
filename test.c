@@ -21,20 +21,29 @@ static void error(char *message)
 }
 
 
-void *receive_loop(faifa_t *faifa)
-{
-	faifa_loop(faifa, (void *)get_frame, faifa);
+//~ void *receive_loop(faifa_t *faifa)
+//~ {
+	//~ faifa_loop(faifa, (void *)get_frame, faifa);
+//~ 
+	//~ return faifa;
+//~ }
+#define HEX_BLOB_BYTES_PER_ROW  16
 
-	return faifa;
+void print_blob( u_char *buf, int len)
+{
+	u_int32_t i, d, m = len % HEX_BLOB_BYTES_PER_ROW;
+
+	faifa_printf(out_stream, "Binary Data, %lu bytes", (unsigned long int)len);
+	for (i = 0; i < len; i += HEX_BLOB_BYTES_PER_ROW) {
+		d = (len - i) / HEX_BLOB_BYTES_PER_ROW;
+		faifa_printf(out_stream, "\n%08lu: ", (unsigned long int)i); 
+		dump_hex((u_int8_t *)buf + i, (d > 0) ? HEX_BLOB_BYTES_PER_ROW : m, " ");
+	}
+	faifa_printf(out_stream, "\n"); 
+
+	return len;
 }
 
-void get_frame()
-{
-  
-  
-    
-
-}
 
 
 
@@ -66,27 +75,43 @@ int main(int argc, char **argv)
     u_int16_t mmtype;
     unsigned int i;
     /* Create a receiving thread */
-    if (pthread_create(&receive_thread, NULL, (void *)receive_loop, faifa)) {
-      perror("error creating thread");
-      abort();
-    }
-    faifa_printf(stdout, "Started receive thread\n");
+    //~ if (pthread_create(&receive_thread, NULL, (void *)receive_loop, faifa)) {
+      //~ perror("error creating thread");
+      //~ abort();
+    //~ }
+    //~ faifa_printf(stdout, "Started receive thread\n");
     faifa_printf(out_stream, "\nChoose the frame type (Ctrl-C to exit): 0x");
     fscanf(in_stream, "%4x", &i);
-    fprintf(out_stream,"%4x", i);     
+     
     mmtype = (u_int16_t)(0xFFFF & i);
-    fprintf(out_stream,"%d", mmtype);   
     
-    /* Keep asking the user for a mmtype to send */
+    
     do_frame(faifa, mmtype, NULL, NULL, NULL);
     faifa_printf(stdout, "Spedito\n");
-    do_frame(faifa, mmtype, NULL, NULL, NULL); 
-    /* Rejoin the receiving thread */
-    if (pthread_join(receive_thread, NULL)) {
-		perror("error joining thread");
-		abort();
-    }
-    faifa_printf(stdout, "Closing receive thread\n");
+    
+    const u_char *buf;
+    int l;
+    l = faifa_recv(faifa, &buf, l);
+    faifa_printf(stdout, "Binary data: %d", l);
+    
+    
+    
+    faifa_close(faifa);
+	faifa_printf(stdout, "dopo faifa_close\n");
+    faifa_free(faifa);
+
+	return 0;
+    
+    
+    //dump_hex_blob(faifa, buf, l);
+    
+    //~ /* Rejoin the receiving thread */
+    //~ if (pthread_join(receive_thread, NULL)) {
+		//~ perror("error joining thread");
+		//~ abort();
+    //~ }
+    //~ faifa_printf(stdout, "Closing receive thread\n");
+    //~ 
     
   
 }
