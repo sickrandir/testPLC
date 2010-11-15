@@ -68,7 +68,7 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 	{
 		case 0xA039:
 		{
-			struct cm_get_network_infos_confirm *mm = (struct cm_get_network_infos_confirm *)frame_ptr;
+			struct network_info_confirm *mm = (struct network_info_confirm *)frame_ptr;
 			break;
 		}
 		case 0xA031:
