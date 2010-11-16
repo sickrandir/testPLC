@@ -10,17 +10,19 @@
 #include <net/ethernet.h>
 #include "homeplug.h"
 #include "homeplug_av.h"
+#include "endian.h"
+#include "string.h"
 
 extern FILE *err_stream;
 extern FILE *out_stream;
 extern FILE *in_stream;
 
-struct hpav_frame_structs{
-	u_int16_t	mmtype;
-	char 		*desc;
-	void		*data_struct;	 	
-	
-};
+faifa_t *faifa;
+u_int8_t hpav_intellon_oui[3] = { 0x00, 0xB0, 0x52};
+u_int8_t hpav_intellon_macaddr[ETHER_ADDR_LEN] = { 0x00, 0xB0, 0x52, 0x00, 0x00, 0x01 };
+
+
+
 
 static void error(char *message)
 {
@@ -54,6 +56,93 @@ void print_blob( u_char *buf, int len)
 	faifa_printf(out_stream, "\n"); 
 }
 
+int get_bits_per_carrier(short unsigned int modulation)
+{
+	switch(modulation) {
+	case NO:
+		return 0;
+		break;
+	case BPSK:
+		return 1;
+		break;
+	case QPSK:
+		return 2;
+		break;
+	case QAM_8:
+		return 3;
+		break;
+	case QAM_16:
+		return 4;
+		break;
+	case QAM_64:
+		return 6;
+		break;
+	case QAM_256:
+		return 8;
+		break;
+	case QAM_1024:
+		return 10;
+		break;
+	default:
+		return 0;
+		break;
+	}	
+}
+
+int send_A070(u_int8_t macaddr[], u_int8_t tsslot)
+{
+	u_int8_t frame_buf[1518];
+	int frame_len = sizeof(frame_buf);
+	struct hpav_frame *frame;
+	u_int8_t *frame_ptr = frame_buf;
+	bzero(frame_buf, frame_len);
+	u_int8_t *da;
+	da = hpav_intellon_macaddr;
+	u_int8_t sa = NULL;
+	/* Set the ethernet frame header */
+	int n;
+	n = ether_init_header(frame_ptr, frame_len, da, sa, ETHERTYPE_HOMEPLUG_AV);
+	frame_len -= n;
+	frame_ptr += n;
+	frame = (struct hpav_frame *)frame_ptr;
+	n = sizeof(frame->header);
+	frame->header.mmtype = STORE16_LE(0xA070);
+	if( (0xA070 & HPAV_MM_CATEGORY_MASK) == HPAV_MM_VENDOR_SPEC ) {
+		frame->header.mmver = HPAV_VERSION_1_0;
+		memcpy(frame->payload.vendor.oui, hpav_intellon_oui, 3);
+		n += sizeof(frame->payload.vendor);
+	} else {		
+		frame->header.mmver = HPAV_VERSION_1_1;
+		n += sizeof(frame->payload.public);
+	}
+	frame_len -= n;
+	frame_ptr += n;
+
+	struct get_tone_map_charac_request *mm = (struct get_tone_map_charac_request *)frame_ptr;
+	int i;
+	for (i = 0; i < 6; i++)
+		mm->macaddr[i] = macaddr[i];
+	
+	int avail = frame_len;
+	avail -= sizeof(*mm);
+										
+	n = (frame_len - avail);
+
+	frame_ptr += n;
+	frame_len = frame_ptr - (u_int8_t *)frame_buf;
+	frame_len = frame_len;
+
+	if (frame_len < ETH_ZLEN)
+		frame_len = ETH_ZLEN;
+
+	frame_len = faifa_send(faifa, frame_buf, frame_len);
+	if (frame_len == -1)
+		faifa_printf(err_stream, "Init: error sending frame (%s)\n", faifa_error(faifa)); 
+
+	return frame_len;	
+}
+
+
 void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hdr)
 {
 	struct hpav_frame *frame = (struct hpav_frame *)frame_ptr;
@@ -75,9 +164,24 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 			
 			break;
 		case 0xA071:
-			
+		{
+			faifa_printf(out_stream, "ricevo A071");
+			struct get_tone_map_charac_confirm *mm = (struct get_tone_map_charac_confirm *)frame_ptr;
+			if (mm->mstatus != 0x00) {
+				faifa_printf(out_stream, "A070-A071 error\n");
+				break;
+			}
+			unsigned int total_bits;
+			int i;
+			for (i = 0; i < MAX_CARRIERS; i++) {
+				total_bits += get_bits_per_carrier(mm->carriers[i].mod_carrier_lo);
+				total_bits += get_bits_per_carrier(mm->carriers[i].mod_carrier_hi);
+			}
+			float bits_per_second = (float) total_bits / 0.0000465;
+			faifa_printf(out_stream, "Modulation rate: %4.2f bit/s\n", bits_per_second);
 			break;
-		
+		}
+			
 	}
 	
 	
@@ -90,7 +194,7 @@ int main(int argc, char **argv)
     out_stream = stdout;
     err_stream = stderr;
     in_stream = stdin;
-    faifa_t *faifa;
+    
     opt_ifname = "eth0";
     faifa = faifa_init();
 	if (faifa == NULL) {
@@ -103,8 +207,16 @@ int main(int argc, char **argv)
 		return -1;
     }
     u_int16_t mmtype;
-    mmtype = 0xA038;
-    do_frame(faifa, mmtype, NULL, NULL, NULL);
+    //~ mmtype = 0xA038;
+    //~ do_frame(faifa, mmtype, NULL, NULL, NULL);
+    faifa_printf(out_stream, "in main\n");
+    sleep(2);
+    int r;
+    u_int8_t mac[6];
+    u_int8_t tsslot=0;
+    mac[0]=0x00;mac[1]=0x19;mac[2]=0xCB;mac[3]=0xFD;mac[4]=0x68;mac[5]=0x1E;
+    r = send_A070(mac, tsslot);
+    
     u_char *buf;
     int l;
     u_int16_t *eth_type;
