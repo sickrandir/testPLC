@@ -89,21 +89,26 @@ int get_bits_per_carrier(short unsigned int modulation)
 	}	
 }
 
-int send_A070(u_int8_t macaddr[], u_int8_t tsslot)
+int init_frame(u_int8_t *frame_buf, int frame_len)
 {
-	u_int8_t frame_buf[1518];
-	int frame_len = sizeof(frame_buf);
 	struct hpav_frame *frame;
 	u_int8_t *frame_ptr = frame_buf;
 	bzero(frame_buf, frame_len);
 	u_int8_t *da;
 	da = hpav_intellon_macaddr;
-	u_int8_t sa = NULL;
+	u_int8_t *sa = NULL;
 	/* Set the ethernet frame header */
 	int n;
 	n = ether_init_header(frame_ptr, frame_len, da, sa, ETHERTYPE_HOMEPLUG_AV);
-	frame_len -= n;
-	frame_ptr += n;
+	return n;	
+}
+
+int send_A070(u_int8_t *frame_buf, int frame_len, int cursor, u_int8_t macaddr[], u_int8_t tsslot)
+{
+	int n;
+	struct hpav_frame *frame;
+	u_int8_t *frame_ptr = frame_buf;
+	frame_ptr += cursor;
 	frame = (struct hpav_frame *)frame_ptr;
 	n = sizeof(frame->header);
 	frame->header.mmtype = STORE16_LE(0xA070);
@@ -117,31 +122,19 @@ int send_A070(u_int8_t macaddr[], u_int8_t tsslot)
 	}
 	frame_len -= n;
 	frame_ptr += n;
-
 	struct get_tone_map_charac_request *mm = (struct get_tone_map_charac_request *)frame_ptr;
 	int i;
 	for (i = 0; i < 6; i++)
 		mm->macaddr[i] = macaddr[i];
-	
-	int avail = frame_len;
-	avail -= sizeof(*mm);
-										
-	n = (frame_len - avail);
-
-	frame_ptr += n;
+	n = sizeof(*mm);
 	frame_len = frame_ptr - (u_int8_t *)frame_buf;
-	frame_len = frame_len;
-
-	if (frame_len < ETH_ZLEN)
+		if (frame_len < ETH_ZLEN)
 		frame_len = ETH_ZLEN;
-
 	frame_len = faifa_send(faifa, frame_buf, frame_len);
 	if (frame_len == -1)
 		faifa_printf(err_stream, "Init: error sending frame (%s)\n", faifa_error(faifa)); 
-
 	return frame_len;	
 }
-
 
 void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hdr)
 {
@@ -165,7 +158,7 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 			break;
 		case 0xA071:
 		{
-			faifa_printf(out_stream, "ricevo A071");
+			faifa_printf(out_stream, "ricevo A071\n");
 			struct get_tone_map_charac_confirm *mm = (struct get_tone_map_charac_confirm *)frame_ptr;
 			if (mm->mstatus != 0x00) {
 				faifa_printf(out_stream, "A070-A071 error\n");
@@ -206,19 +199,19 @@ int main(int argc, char **argv)
 		faifa_free(faifa);
 		return -1;
     }
-    u_int16_t mmtype;
-    //~ mmtype = 0xA038;
-    //~ do_frame(faifa, mmtype, NULL, NULL, NULL);
     faifa_printf(out_stream, "in main\n");
     sleep(2);
-    int r;
+    int c,s;
     u_int8_t mac[6];
     u_int8_t tsslot=0;
-    mac[0]=0x00;mac[1]=0x19;mac[2]=0xCB;mac[3]=0xFD;mac[4]=0x68;mac[5]=0x1E;
-    r = send_A070(mac, tsslot);
+    mac[0]=0x00;mac[1]=0x19;mac[2]=0xCB;mac[3]=0xFD;mac[4]=0x68;mac[5]=0x1D;
+    u_int8_t frame_buf[1518];
+    int frame_len = sizeof(frame_buf);
+    c = init_frame(frame_buf, frame_len);
+    s = send_A070(frame_buf, frame_len, c, mac, tsslot);
     
-    u_char *buf;
-    int l;
+    u_int8_t *buf;
+    int l = 1518;
     u_int16_t *eth_type;
     do {
 		l = faifa_recv(faifa, buf, l);
@@ -235,6 +228,7 @@ int main(int argc, char **argv)
 		}	
 	}
 	while (!(*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) && !(*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV)));
+    faifa_printf(out_stream, "Ricevuto. Chiudo\n");
     faifa_close(faifa);
 	faifa_free(faifa);
 	return 0;
