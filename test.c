@@ -23,6 +23,29 @@ u_int8_t hpav_intellon_macaddr[ETHER_ADDR_LEN] = { 0x00, 0xB0, 0x52, 0x00, 0x00,
 
 
 
+struct station_data {
+	u_int8_t sta_mac[6];
+	u_int8_t sta_tei;
+	u_int8_t bridge_macaddr[6];
+	u_int8_t avg_phy_tx_rate;
+	u_int8_t avg_phy_rx_rate;
+	float raw_rate; //raw rate obtained with modulation data from A071 frame	
+};
+
+struct network_data { 
+	int station_count;
+	u_int8_t network_id[7];
+	u_int8_t sta_mac[6];
+	u_int8_t cco_mac[6];
+	float tx_mpdu_collision_perc;
+    float tx_mpdu_failure_perc;
+    float tx_pb_failure_perc;
+    float rx_mpdu_failure_perc;
+    float rx_pb_failure_perc;
+    float rx_tbe_failure_perc;
+	struct station_data sta_data[];	
+}; 
+
 static void error(char *message)
 {
 	fprintf(stderr, "%s: %s\n", "faifa", message);
@@ -88,7 +111,7 @@ int get_bits_per_carrier(short unsigned int modulation)
 	}	
 }
 
-int init_frame(u_int8_t *frame_buf, int frame_len)
+int init_frame(u_int8_t *frame_buf, int frame_len, u_int16_t mmtype)
 {
 	struct hpav_frame *frame;
 	u_int8_t *frame_ptr = frame_buf;
@@ -99,19 +122,11 @@ int init_frame(u_int8_t *frame_buf, int frame_len)
 	/* Set the ethernet frame header */
 	int n;
 	n = ether_init_header(frame_ptr, frame_len, da, sa, ETHERTYPE_HOMEPLUG_AV);
-	return n;	
-}
-
-int send_A070(u_int8_t *frame_buf, int frame_len, int cursor, u_int8_t macaddr[], u_int8_t tsslot)
-{
-	int n;
-	struct hpav_frame *frame;
-	u_int8_t *frame_ptr = frame_buf;
-	frame_ptr += cursor;
+	frame_ptr += n;
 	frame = (struct hpav_frame *)frame_ptr;
 	n = sizeof(frame->header);
-	frame->header.mmtype = STORE16_LE(0xA070);
-	if( (0xA070 & HPAV_MM_CATEGORY_MASK) == HPAV_MM_VENDOR_SPEC ) {
+	frame->header.mmtype = STORE16_LE(mmtype);
+	if( (mmtype & HPAV_MM_CATEGORY_MASK) == HPAV_MM_VENDOR_SPEC ) {
 		frame->header.mmver = HPAV_VERSION_1_0;
 		memcpy(frame->payload.vendor.oui, hpav_intellon_oui, 3);
 		n += sizeof(frame->payload.vendor);
@@ -119,10 +134,30 @@ int send_A070(u_int8_t *frame_buf, int frame_len, int cursor, u_int8_t macaddr[]
 		frame->header.mmver = HPAV_VERSION_1_1;
 		n += sizeof(frame->payload.public);
 	}
-	frame_len -= n;
 	frame_ptr += n;
+	frame_len = frame_ptr - (u_int8_t *)frame_buf;
+	return frame_len;
+}
+
+int send_A038(u_int8_t *frame_buf, int frame_len, int cursor)
+{
+	u_int8_t *frame_ptr = frame_buf;
+	frame_ptr += cursor;
+	frame_len = frame_ptr - (u_int8_t *)frame_buf;
+		if (frame_len < ETH_ZLEN)
+		frame_len = ETH_ZLEN;
+	frame_len = faifa_send(faifa, frame_buf, frame_len);
+	if (frame_len == -1)
+		faifa_printf(err_stream, "Init: error sending frame (%s)\n", faifa_error(faifa)); 
+	return frame_len;	
+}
+
+int send_A070(u_int8_t *frame_buf, int frame_len, int cursor, u_int8_t macaddr[], u_int8_t tsslot)
+{
+	u_int8_t *frame_ptr = frame_buf;
+	int i,n;
+	frame_ptr += cursor;
 	struct get_tone_map_charac_request *mm = (struct get_tone_map_charac_request *)frame_ptr;
-	int i;
 	for (i = 0; i < 6; i++)
 		mm->macaddr[i] = macaddr[i];
 	n = sizeof(*mm);
@@ -150,6 +185,11 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 		case 0xA039:
 		{
 			struct network_info_confirm *mm = (struct network_info_confirm *)frame_ptr;
+			
+			
+			
+			
+			
 			break;
 		}
 		case 0xA031:
@@ -172,12 +212,8 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 			float bits_per_second = (float) total_bits / 0.0000465;
 			faifa_printf(out_stream, "Modulation rate: %4.2f bit/s\n", bits_per_second);
 			break;
-		}
-			
-	}
-	
-	
-	
+		}		
+	}	
 }
 
 int main(int argc, char **argv)
@@ -206,9 +242,10 @@ int main(int argc, char **argv)
     mac[0]=0x00;mac[1]=0x19;mac[2]=0xCB;mac[3]=0xFD;mac[4]=0x68;mac[5]=0x1D;
     u_int8_t frame_buf[1518];
     int frame_len = sizeof(frame_buf);
-    c = init_frame(frame_buf, frame_len);
-    s = send_A070(frame_buf, frame_len, c, mac, tsslot);
-    
+    //c = init_frame(frame_buf, frame_len, 0xA070);
+    //s = send_A070(frame_buf, frame_len, c, mac, tsslot);
+    c = init_frame(frame_buf, frame_len, 0xA038);
+    s = send_A038(frame_buf, frame_len, c);
     u_int8_t *buf;
     int l = 1518;
     u_int16_t *eth_type;
