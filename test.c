@@ -23,7 +23,6 @@ u_int8_t hpav_intellon_macaddr[ETHER_ADDR_LEN] = { 0x00, 0xB0, 0x52, 0x00, 0x00,
 
 
 
-
 static void error(char *message)
 {
 	fprintf(stderr, "%s: %s\n", "faifa", message);
