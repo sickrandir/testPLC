@@ -24,11 +24,7 @@ u_int8_t hpav_intellon_macaddr[ETHER_ADDR_LEN] = { 0x00, 0xB0, 0x52, 0x00, 0x00,
 
 
 struct station_data {
-	u_int8_t sta_mac[6];
-	u_int8_t sta_tei;
-	u_int8_t bridge_macaddr[6];
-	u_int8_t avg_phy_tx_rate;
-	u_int8_t avg_phy_rx_rate;
+	struct sta_info sta_info;
 	float raw_rate; //raw rate obtained with modulation data from A071 frame	
 };
 
@@ -36,6 +32,7 @@ struct network_data {
 	int station_count;
 	u_int8_t network_id[7];
 	u_int8_t sta_mac[6];
+	u_int8_t sta_role;
 	u_int8_t cco_mac[6];
 	float tx_mpdu_collision_perc;
     float tx_mpdu_failure_perc;
@@ -43,7 +40,7 @@ struct network_data {
     float rx_mpdu_failure_perc;
     float rx_pb_failure_perc;
     float rx_tbe_failure_perc;
-	struct station_data sta_data[];	
+	struct station_data *sta_data[];	
 }; 
 
 static void error(char *message)
@@ -170,7 +167,7 @@ int send_A070(u_int8_t *frame_buf, int frame_len, int cursor, u_int8_t macaddr[]
 	return frame_len;	
 }
 
-void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hdr)
+void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hdr, struct network_data *nd)
 {
 	struct hpav_frame *frame = (struct hpav_frame *)frame_ptr;
 	if( (frame->header.mmtype & HPAV_MM_CATEGORY_MASK) == HPAV_MM_VENDOR_SPEC ) {
@@ -185,11 +182,20 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 		case 0xA039:
 		{
 			struct network_info_confirm *mm = (struct network_info_confirm *)frame_ptr;
-			
-			
-			
-			
-			
+			int n_stas = mm->num_stas;
+			nd = (struct network_data *) malloc(sizeof(struct network_data)+sizeof(struct station_data[n_stas]));
+			memcpy(&nd->network_id, mm->nid, 7 );	
+			memcpy(&nd->network_id, mm->nid, 7 );	
+			memcpy(&nd->sta_mac, hdr->ether_shost, ETHER_ADDR_LEN );
+			nd->sta_role = mm->sta_role;
+			memcpy(&nd->cco_mac, mm->cco_macaddr, ETHER_ADDR_LEN );
+			int i;
+			struct station_data sta_d[n_stas];
+			for (i=0; i < n_stas; i++)
+			{
+				memcpy(&sta_d[i].sta_info, &mm->stas[i], sizeof(struct sta_info));
+				memcpy(nd->sta_data[i], &sta_d[i], sizeof(struct station_data));	
+			}
 			break;
 		}
 		case 0xA031:
@@ -209,6 +215,7 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 				total_bits += get_bits_per_carrier(mm->carriers[i].mod_carrier_lo);
 				total_bits += get_bits_per_carrier(mm->carriers[i].mod_carrier_hi);
 			}
+			faifa_printf(out_stream, "Total bits: %d\n", total_bits);
 			float bits_per_second = (float) total_bits / 0.0000465;
 			faifa_printf(out_stream, "Modulation rate: %4.2f bit/s\n", bits_per_second);
 			break;
@@ -236,16 +243,20 @@ int main(int argc, char **argv)
     }
     faifa_printf(out_stream, "in main\n");
     sleep(2);
+    
+    struct network_data *nd = NULL;
+    	 
+       
     int c,s;
     u_int8_t mac[6];
     u_int8_t tsslot=0;
     mac[0]=0x00;mac[1]=0x19;mac[2]=0xCB;mac[3]=0xFD;mac[4]=0x68;mac[5]=0x1D;
     u_int8_t frame_buf[1518];
     int frame_len = sizeof(frame_buf);
-    //c = init_frame(frame_buf, frame_len, 0xA070);
-    //s = send_A070(frame_buf, frame_len, c, mac, tsslot);
-    c = init_frame(frame_buf, frame_len, 0xA038);
-    s = send_A038(frame_buf, frame_len, c);
+    c = init_frame(frame_buf, frame_len, 0xA070);
+    s = send_A070(frame_buf, frame_len, c, mac, tsslot);
+    //c = init_frame(frame_buf, frame_len, 0xA038);
+    //s = send_A038(frame_buf, frame_len, c);
     u_int8_t *buf;
     int l = 1518;
     u_int16_t *eth_type;
@@ -259,7 +270,7 @@ int main(int argc, char **argv)
 		payload_len = frame_len - sizeof(*eth_header);
 		//if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) || (*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
 		if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
-			hpav_cast_frame(payload_ptr, payload_len, eth_header);
+			hpav_cast_frame(payload_ptr, payload_len, eth_header, nd);
 			print_blob(frame_ptr, frame_len);				
 		}	
 	}
