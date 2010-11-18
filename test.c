@@ -184,6 +184,7 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 			struct network_info_confirm *mm = (struct network_info_confirm *)frame_ptr;
 			int n_stas = mm->num_stas;
 			nd = (struct network_data *) malloc(sizeof(struct network_data)+sizeof(struct station_data[n_stas]));
+			nd->station_count = n_stas;
 			memcpy(&nd->network_id, mm->nid, 7 );	
 			memcpy(&nd->network_id, mm->nid, 7 );	
 			memcpy(&nd->sta_mac, hdr->ether_shost, ETHER_ADDR_LEN );
@@ -209,9 +210,10 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 				faifa_printf(out_stream, "A070-A071 error\n");
 				break;
 			}
-			unsigned int total_bits;
+			unsigned int total_bits = 0;
 			int i;
 			for (i = 0; i < MAX_CARRIERS; i++) {
+				faifa_printf(out_stream, "Total bits: %d\n", total_bits);
 				total_bits += get_bits_per_carrier(mm->carriers[i].mod_carrier_lo);
 				total_bits += get_bits_per_carrier(mm->carriers[i].mod_carrier_hi);
 			}
@@ -245,18 +247,17 @@ int main(int argc, char **argv)
     sleep(2);
     
     struct network_data *nd = NULL;
-    	 
-       
+           
     int c,s;
     u_int8_t mac[6];
     u_int8_t tsslot=0;
     mac[0]=0x00;mac[1]=0x19;mac[2]=0xCB;mac[3]=0xFD;mac[4]=0x68;mac[5]=0x1D;
     u_int8_t frame_buf[1518];
     int frame_len = sizeof(frame_buf);
-    c = init_frame(frame_buf, frame_len, 0xA070);
-    s = send_A070(frame_buf, frame_len, c, mac, tsslot);
-    //c = init_frame(frame_buf, frame_len, 0xA038);
-    //s = send_A038(frame_buf, frame_len, c);
+    //c = init_frame(frame_buf, frame_len, 0xA070);
+    //s = send_A070(frame_buf, frame_len, c, mac, tsslot);
+    c = init_frame(frame_buf, frame_len, 0xA038);
+    s = send_A038(frame_buf, frame_len, c);
     u_int8_t *buf;
     int l = 1518;
     u_int16_t *eth_type;
