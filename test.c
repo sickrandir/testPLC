@@ -167,7 +167,7 @@ int send_A070(u_int8_t *frame_buf, int frame_len, int cursor, u_int8_t macaddr[]
 	return frame_len;	
 }
 
-void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hdr, struct network_data *nd)
+void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hdr, struct network_data **nd)
 {
 	struct hpav_frame *frame = (struct hpav_frame *)frame_ptr;
 	if( (frame->header.mmtype & HPAV_MM_CATEGORY_MASK) == HPAV_MM_VENDOR_SPEC ) {
@@ -198,7 +198,7 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 				memcpy(&sta_d[i].sta_info, &mm->stas[i], sizeof(struct sta_info));
 				memcpy(n_data->sta_data[i], &sta_d[i], sizeof(struct station_data));	
 			}
-			nd = n_data;
+			nd = &n_data;
 			int g = 0;			
 			break;
 		}
