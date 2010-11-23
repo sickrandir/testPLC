@@ -183,20 +183,22 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 		{
 			struct network_info_confirm *mm = (struct network_info_confirm *)frame_ptr;
 			int n_stas = mm->num_stas;
-			nd = (struct network_data *) malloc(sizeof(struct network_data)+sizeof(struct station_data[n_stas]));
-			nd->station_count = n_stas;
-			memcpy(&nd->network_id, mm->nid, 7 );	
-			memcpy(&nd->network_id, mm->nid, 7 );	
-			memcpy(&nd->sta_mac, hdr->ether_shost, ETHER_ADDR_LEN );
-			nd->sta_role = mm->sta_role;
-			memcpy(&nd->cco_mac, mm->cco_macaddr, ETHER_ADDR_LEN );
+			struct network_data *n_data;
+			n_data = (struct network_data *) malloc(sizeof(struct network_data)+sizeof(struct station_data[n_stas]));
+			n_data->station_count = n_stas;
+			memcpy(&n_data->network_id, mm->nid, 7 );	
+			memcpy(&n_data->network_id, mm->nid, 7 );	
+			memcpy(&n_data->sta_mac, hdr->ether_shost, ETHER_ADDR_LEN );
+			n_data->sta_role = mm->sta_role;
+			memcpy(&n_data->cco_mac, mm->cco_macaddr, ETHER_ADDR_LEN );
 			int i;
 			struct station_data sta_d[n_stas];
 			for (i=0; i < n_stas; i++)
 			{
 				memcpy(&sta_d[i].sta_info, &mm->stas[i], sizeof(struct sta_info));
-				memcpy(nd->sta_data[i], &sta_d[i], sizeof(struct station_data));	
+				memcpy(n_data->sta_data[i], &sta_d[i], sizeof(struct station_data));	
 			}
+			nd = n_data;			
 			break;
 		}
 		case 0xA031:
@@ -246,7 +248,8 @@ int main(int argc, char **argv)
     faifa_printf(out_stream, "in main\n");
     sleep(2);
     
-    struct network_data *nd = NULL;
+    struct network_data *nd;
+    nd = NULL;
            
     int c,s;
     u_int8_t mac[6];
