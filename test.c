@@ -275,7 +275,7 @@ int main(int argc, char **argv)
 		payload_len = frame_len - sizeof(*eth_header);
 		//if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) || (*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
 		if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
-			hpav_cast_frame(payload_ptr, payload_len, eth_header, nd);
+			hpav_cast_frame(payload_ptr, payload_len, eth_header, &nd);
 			print_blob(frame_ptr, frame_len);				
 		}	
 	}
