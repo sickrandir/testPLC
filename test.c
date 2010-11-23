@@ -198,7 +198,8 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 				memcpy(&sta_d[i].sta_info, &mm->stas[i], sizeof(struct sta_info));
 				memcpy(n_data->sta_data[i], &sta_d[i], sizeof(struct station_data));	
 			}
-			nd = n_data;			
+			nd = n_data;
+			int g = 0;			
 			break;
 		}
 		case 0xA031:
