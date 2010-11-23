@@ -249,9 +249,8 @@ int main(int argc, char **argv)
     faifa_printf(out_stream, "in main\n");
     sleep(2);
     
-    struct network_data *nd;
-    nd = NULL;
-           
+    struct network_data *nd = NULL;
+            
     int c,s;
     u_int8_t mac[6];
     u_int8_t tsslot=0;
