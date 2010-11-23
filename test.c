@@ -167,7 +167,7 @@ int send_A070(u_int8_t *frame_buf, int frame_len, int cursor, u_int8_t macaddr[]
 	return frame_len;	
 }
 
-void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hdr, struct network_data **nd)
+void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hdr, struct network_data ***nd)
 {
 	struct hpav_frame *frame = (struct hpav_frame *)frame_ptr;
 	if( (frame->header.mmtype & HPAV_MM_CATEGORY_MASK) == HPAV_MM_VENDOR_SPEC ) {
@@ -183,22 +183,20 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 		{
 			struct network_info_confirm *mm = (struct network_info_confirm *)frame_ptr;
 			int n_stas = mm->num_stas;
-			struct network_data *n_data;
-			n_data = (struct network_data *) malloc(sizeof(struct network_data)+sizeof(struct station_data[n_stas]));
-			n_data->station_count = n_stas;
-			memcpy(&n_data->network_id, mm->nid, 7 );	
-			memcpy(&n_data->network_id, mm->nid, 7 );	
-			memcpy(&n_data->sta_mac, hdr->ether_shost, ETHER_ADDR_LEN );
-			n_data->sta_role = mm->sta_role;
-			memcpy(&n_data->cco_mac, mm->cco_macaddr, ETHER_ADDR_LEN );
+			**nd= (struct network_data *) malloc(sizeof(struct network_data)+sizeof(struct station_data[n_stas]));
+			(**nd)->station_count = n_stas;
+			memcpy(&(**nd)->network_id, mm->nid, 7 );	
+			memcpy(&(**nd)->network_id, mm->nid, 7 );	
+			memcpy(&(**nd)->sta_mac, hdr->ether_shost, ETHER_ADDR_LEN );
+			(**nd)->sta_role = mm->sta_role;
+			memcpy(&(**nd)->cco_mac, mm->cco_macaddr, ETHER_ADDR_LEN );
 			int i;
 			struct station_data sta_d[n_stas];
 			for (i=0; i < n_stas; i++)
 			{
 				memcpy(&sta_d[i].sta_info, &mm->stas[i], sizeof(struct sta_info));
-				memcpy(n_data->sta_data[i], &sta_d[i], sizeof(struct station_data));	
+				(**nd)->sta_data[i] = &sta_d[i];
 			}
-			nd = &n_data;
 			int g = 0;			
 			break;
 		}
@@ -228,6 +226,31 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 	}	
 }
 
+
+void receive_frame(struct network_data **nd)
+{
+	u_int8_t *buf;
+    int l = 1518;
+    u_int16_t *eth_type;
+    do {
+		l = faifa_recv(faifa, buf, l);
+		struct ether_header *eth_header = (struct ether_header *)buf;
+		eth_type = &(eth_header->ether_type);
+        u_int8_t *frame_ptr = (u_int8_t *)buf, *payload_ptr;
+		int frame_len = l, payload_len;
+		payload_ptr = frame_ptr + sizeof(*eth_header);
+		payload_len = frame_len - sizeof(*eth_header);
+		//if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) || (*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
+		if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
+			hpav_cast_frame(payload_ptr, payload_len, eth_header, &nd);
+			print_blob(frame_ptr, frame_len);				
+		}	
+	}
+	while (!(*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) && !(*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV)));
+}
+
+
+
 int main(int argc, char **argv)
 {
     char *opt_ifname = NULL;
@@ -249,37 +272,28 @@ int main(int argc, char **argv)
     faifa_printf(out_stream, "in main\n");
     sleep(2);
     
-    struct network_data *nd = NULL;
+    struct network_data *nd;
             
     int c,s;
     u_int8_t mac[6];
-    u_int8_t tsslot=0;
     mac[0]=0x00;mac[1]=0x19;mac[2]=0xCB;mac[3]=0xFD;mac[4]=0x68;mac[5]=0x1D;
     u_int8_t frame_buf[1518];
     int frame_len = sizeof(frame_buf);
-    //c = init_frame(frame_buf, frame_len, 0xA070);
-    //s = send_A070(frame_buf, frame_len, c, mac, tsslot);
     c = init_frame(frame_buf, frame_len, 0xA038);
     s = send_A038(frame_buf, frame_len, c);
-    u_int8_t *buf;
-    int l = 1518;
-    u_int16_t *eth_type;
-    do {
-		l = faifa_recv(faifa, buf, l);
-		struct ether_header *eth_header = (struct ether_header *)buf;
-		eth_type = &(eth_header->ether_type);
-        u_int8_t *frame_ptr = (u_int8_t *)buf, *payload_ptr;
-		int frame_len = l, payload_len;
-		payload_ptr = frame_ptr + sizeof(*eth_header);
-		payload_len = frame_len - sizeof(*eth_header);
-		//if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) || (*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
-		if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
-			hpav_cast_frame(payload_ptr, payload_len, eth_header, &nd);
-			print_blob(frame_ptr, frame_len);				
-		}	
-	}
-	while (!(*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) && !(*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV)));
-    faifa_printf(out_stream, "Ricevuto. Chiudo\n");
+	receive_frame(&nd);
+	int i;
+	for (i=0; i<nd->station_count; i++)
+	{
+		struct station_data *sd = nd->sta_data[i];		
+		int z;
+		for (z=0; z < 6; z++)
+			mac[z] = (u_int8_t) (sd->sta_info.sta_macaddr)+z;
+		c = init_frame(frame_buf, frame_len, 0xA070);
+		s = send_A070(frame_buf, frame_len, c, mac, 0);
+		receive_frame(&nd);	
+	} 
+	faifa_printf(out_stream, "Ricevuto. Chiudo\n");
     faifa_close(faifa);
 	faifa_free(faifa);
 	return 0;
