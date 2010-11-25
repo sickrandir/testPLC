@@ -214,11 +214,11 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 			unsigned int total_bits = 0;
 			int i;
 			for (i = 0; i < MAX_CARRIERS; i++) {
-				faifa_printf(out_stream, "Total bits: %d\n", total_bits);
+				//faifa_printf(out_stream, "Total bits: %d\n", total_bits);
 				total_bits += get_bits_per_carrier(mm->carriers[i].mod_carrier_lo);
 				total_bits += get_bits_per_carrier(mm->carriers[i].mod_carrier_hi);
 			}
-			faifa_printf(out_stream, "Total bits: %d\n", total_bits);
+			//faifa_printf(out_stream, "Total bits: %d\n", total_bits);
 			float bits_per_second = (float) total_bits / 0.0000465;
 			faifa_printf(out_stream, "Modulation rate: %4.2f bit/s\n", bits_per_second);
 			break;
@@ -230,9 +230,11 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 void receive_frame(struct network_data **nd)
 {
 	u_int8_t *buf;
-    int l = 1518;
+	
+    u_int32_t l = 1518;
     u_int16_t *eth_type;
     do {
+		l = 1518;
 		l = faifa_recv(faifa, buf, l);
 		struct ether_header *eth_header = (struct ether_header *)buf;
 		eth_type = &(eth_header->ether_type);
@@ -243,7 +245,7 @@ void receive_frame(struct network_data **nd)
 		//if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) || (*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
 		if((*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV))) {
 			hpav_cast_frame(payload_ptr, payload_len, eth_header, &nd);
-			print_blob(frame_ptr, frame_len);				
+			//print_blob(frame_ptr, frame_len);				
 		}	
 	}
 	while (!(*eth_type == ntohs(ETHERTYPE_HOMEPLUG)) && !(*eth_type == ntohs(ETHERTYPE_HOMEPLUG_AV)));
@@ -276,22 +278,25 @@ int main(int argc, char **argv)
             
     int c,s;
     u_int8_t mac[6];
-    mac[0]=0x00;mac[1]=0x19;mac[2]=0xCB;mac[3]=0xFD;mac[4]=0x68;mac[5]=0x1D;
     u_int8_t frame_buf[1518];
     int frame_len = sizeof(frame_buf);
     c = init_frame(frame_buf, frame_len, 0xA038);
     s = send_A038(frame_buf, frame_len, c);
 	receive_frame(&nd);
+	struct network_data *nd2;
+	nd2 = (struct network_data *) malloc(sizeof(*nd));
+	memcpy(nd2,nd,sizeof(*nd));
+	
 	int i;
 	for (i=0; i<nd->station_count; i++)
 	{
 		struct station_data *sd = nd->sta_data[i];		
 		int z;
 		for (z=0; z < 6; z++)
-			mac[z] = (u_int8_t) (sd->sta_info.sta_macaddr)+z;
+			mac[z] = (u_int8_t) sd->sta_info.sta_macaddr[z];
 		c = init_frame(frame_buf, frame_len, 0xA070);
 		s = send_A070(frame_buf, frame_len, c, mac, 0);
-		receive_frame(&nd);	
+		receive_frame(&nd2);	
 	} 
 	faifa_printf(out_stream, "Ricevuto. Chiudo\n");
     faifa_close(faifa);
