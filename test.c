@@ -40,7 +40,7 @@ struct network_data {
     float rx_mpdu_failure_perc;
     float rx_pb_failure_perc;
     float rx_tbe_failure_perc;
-	struct station_data *sta_data[];	
+	struct station_data sta_data[];	
 }; 
 
 static void error(char *message)
@@ -184,20 +184,19 @@ void hpav_cast_frame(u_int8_t *frame_ptr, int frame_len, struct ether_header *hd
 			struct network_info_confirm *mm = (struct network_info_confirm *)frame_ptr;
 			int n_stas = mm->num_stas;
 			**nd= (struct network_data *) malloc(sizeof(struct network_data)+sizeof(struct station_data[n_stas]));
-			(**nd)->station_count = n_stas;
-			memcpy(&(**nd)->network_id, mm->nid, 7 );	
-			memcpy(&(**nd)->network_id, mm->nid, 7 );	
-			memcpy(&(**nd)->sta_mac, hdr->ether_shost, ETHER_ADDR_LEN );
+			(**nd)->station_count = n_stas;	
+			memcpy((**nd)->network_id, mm->nid, 7 );	
+			memcpy((**nd)->sta_mac, hdr->ether_shost, ETHER_ADDR_LEN );
 			(**nd)->sta_role = mm->sta_role;
-			memcpy(&(**nd)->cco_mac, mm->cco_macaddr, ETHER_ADDR_LEN );
+			memcpy((**nd)->cco_mac, mm->cco_macaddr, ETHER_ADDR_LEN );
 			int i;
 			struct station_data sta_d[n_stas];
 			for (i=0; i < n_stas; i++)
 			{
-				memcpy(&sta_d[i].sta_info, &mm->stas[i], sizeof(struct sta_info));
-				(**nd)->sta_data[i] = &sta_d[i];
+				sta_d[i].sta_info = mm->stas[i];
+				//memcpy(&sta_d[i].sta_info, &mm->stas[i], sizeof(struct sta_info));
+				(**nd)->sta_data[i] = sta_d[i];
 			}
-			int g = 0;			
 			break;
 		}
 		case 0xA031:
@@ -286,14 +285,19 @@ int main(int argc, char **argv)
 	struct network_data *nd2;
 	nd2 = (struct network_data *) malloc(sizeof(*nd));
 	memcpy(nd2,nd,sizeof(*nd));
+	memcpy(nd2->sta_data,nd->sta_data,sizeof(struct station_data[3]));
+	
+	
 	
 	int i;
-	for (i=0; i<nd->station_count; i++)
+	for (i=0; i < nd2->station_count; i++)
 	{
-		struct station_data *sd = nd->sta_data[i];		
+		struct station_data sd = nd2->sta_data[i];		
+		if (sd.sta_info.avg_phy_tx_rate == 0 || sd.sta_info.avg_phy_rx_rate == 0)
+			continue;
 		int z;
 		for (z=0; z < 6; z++)
-			mac[z] = (u_int8_t) sd->sta_info.sta_macaddr[z];
+			mac[z] = (u_int8_t) sd.sta_info.sta_macaddr[z];
 		c = init_frame(frame_buf, frame_len, 0xA070);
 		s = send_A070(frame_buf, frame_len, c, mac, 0);
 		receive_frame(&nd2);	
